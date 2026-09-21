@@ -26,6 +26,26 @@ export async function login(c: Context<AppEnv>) {
   })
 }
 
+export async function refresh(c: Context<AppEnv>) {
+  const body = await c.req.json<{ refresh_token?: string }>().catch(() => null)
+  if (!body?.refresh_token) {
+    return c.json({ error: 'Campo obrigatório: refresh_token' }, 400)
+  }
+
+  const anon = getAnonClient(c)
+  const { data, error } = await anon.auth.refreshSession({ refresh_token: body.refresh_token })
+
+  if (error || !data.session) {
+    return c.json({ error: 'Sessão inválida ou expirada, faça login novamente' }, 401)
+  }
+
+  return c.json({
+    user: { id: data.user!.id, email: data.user!.email },
+    access_token: data.session.access_token,
+    refresh_token: data.session.refresh_token,
+  })
+}
+
 interface SignupBody {
   email?: string
   password?: string
