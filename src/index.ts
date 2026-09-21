@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { requireAuth } from './middleware/auth'
 import { login } from './routes/auth'
 import { criarPagina, minhasPaginas, obterPagina, atualizarPagina } from './routes/paginas'
@@ -8,6 +9,8 @@ import { solicitarCertificado, listarCertificados } from './routes/certificados'
 import type { AppEnv } from './types'
 
 const app = new Hono<AppEnv>()
+
+app.use('*', cors())
 
 app.get('/health', (c) => c.json({ status: 'ok', area: c.env.AREA, service: 'backend' }))
 
