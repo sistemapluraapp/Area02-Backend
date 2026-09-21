@@ -6,6 +6,12 @@ import { criarPagina, minhasPaginas, obterPagina, atualizarPagina } from './rout
 import { convidarColaborador, removerColaborador } from './routes/colaboradores'
 import { responderAvaliacao } from './routes/avaliacoes'
 import { solicitarCertificado, listarCertificados } from './routes/certificados'
+import {
+  listarNotificacoes,
+  contagemNaoLidas,
+  marcarComoLida,
+  marcarTodasComoLidas,
+} from './routes/notificacoes'
 import type { AppEnv } from './types'
 
 const app = new Hono<AppEnv>()
@@ -33,5 +39,10 @@ app.patch('/avaliacoes/:id/resposta', responderAvaliacao)
 
 app.post('/paginas/:id/certificados', solicitarCertificado)
 app.get('/paginas/:id/certificados', listarCertificados)
+
+app.get('/notificacoes', listarNotificacoes)
+app.get('/notificacoes/contagem-nao-lidas', contagemNaoLidas)
+app.patch('/notificacoes/:id/ler', marcarComoLida)
+app.patch('/notificacoes/marcar-todas-lidas', marcarTodasComoLidas)
 
 export default app
