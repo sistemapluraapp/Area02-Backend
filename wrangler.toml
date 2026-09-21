@@ -1,0 +1,12 @@
+name = "area02-backend"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+SUPABASE_URL = "https://uoembacxxnkuwldmdgcu.supabase.co"
+AREA = "02"
+
+# Secrets — nunca commitar aqui. Configurar com `wrangler secret put <NOME>`
+# ou como secret do repositório no GitHub Actions:
+#   SUPABASE_ANON_KEY
