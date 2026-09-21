@@ -5,8 +5,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 SUPABASE_URL = "https://uoembacxxnkuwldmdgcu.supabase.co"
+# A anon/publishable key do Supabase é feita para ser pública (protegida
+# pelo RLS, não por sigilo) — é a mesma usada nos frontends. Por isso vive
+# aqui como var normal, não como secret.
+SUPABASE_ANON_KEY = "sb_publishable_LHnLAUk6M4ek94aokap89g__nL-ySby"
 AREA = "02"
-
-# Secrets — nunca commitar aqui. Configurar com `wrangler secret put <NOME>`
-# ou como secret do repositório no GitHub Actions:
-#   SUPABASE_ANON_KEY
