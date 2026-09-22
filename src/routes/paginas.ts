@@ -186,7 +186,7 @@ export async function atualizarPagina(c: Context<AppEnv>) {
 
 export async function uploadCapa(c: Context<AppEnv>) {
   const supabase = c.get('supabase')
-  const paginaId = c.req.param('id')
+  const paginaId = c.req.param('id') as string
   const body = await c.req.json<{ imagem_base64?: string; extensao?: string }>().catch(() => null)
 
   if (!body?.imagem_base64 || !body.extensao) {
@@ -204,7 +204,7 @@ export async function uploadCapa(c: Context<AppEnv>) {
 
 export async function adicionarFoto(c: Context<AppEnv>) {
   const supabase = c.get('supabase')
-  const paginaId = c.req.param('id')
+  const paginaId = c.req.param('id') as string
   const body = await c.req.json<{ imagem_base64?: string; extensao?: string }>().catch(() => null)
 
   if (!body?.imagem_base64 || !body.extensao) {
@@ -230,7 +230,7 @@ export async function adicionarFoto(c: Context<AppEnv>) {
 
 export async function removerFoto(c: Context<AppEnv>) {
   const supabase = c.get('supabase')
-  const paginaId = c.req.param('id')
+  const paginaId = c.req.param('id') as string
   const body = await c.req.json<{ url?: string }>().catch(() => null)
 
   if (!body?.url) {
