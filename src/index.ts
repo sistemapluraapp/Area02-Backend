@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth } from './middleware/auth'
 import { login, signup, refresh } from './routes/auth'
-import { criarPagina, minhasPaginas, obterPagina, atualizarPagina } from './routes/paginas'
+import { criarPagina, minhasPaginas, obterPagina, atualizarPagina, uploadCapa, adicionarFoto, removerFoto } from './routes/paginas'
 import { convidarColaborador, removerColaborador } from './routes/colaboradores'
 import { responderAvaliacao } from './routes/avaliacoes'
 import { solicitarCertificado, listarCertificados } from './routes/certificados'
@@ -39,6 +39,9 @@ app.post('/paginas', criarPagina)
 app.get('/minhas-paginas', minhasPaginas)
 app.get('/paginas/:id', obterPagina)
 app.put('/paginas/:id', atualizarPagina)
+app.post('/paginas/:id/capa', uploadCapa)
+app.post('/paginas/:id/fotos', adicionarFoto)
+app.delete('/paginas/:id/fotos', removerFoto)
 
 app.post('/paginas/:id/colaboradores', convidarColaborador)
 app.delete('/paginas/:id/colaboradores/:vinculoId', removerColaborador)
