@@ -1,6 +1,7 @@
 import type { Context } from 'hono'
 import type { AppEnv } from '../types'
 import { uploadFotoPagina } from '../lib/fotos'
+import { geocodificarEndereco } from '../lib/geocoding'
 
 const CATEGORIAS = [
   'hotel',
@@ -32,7 +33,7 @@ const RECURSOS = [
 ]
 
 const PAGINA_COLUNAS =
-  'id, tipo, nome, descricao, categoria, cep, endereco, cidade, uf, complemento, logo_url, capa_url, fotos_urls, recursos_acessibilidade, youtube, instagram, facebook, tiktok, website, created_at'
+  'id, tipo, nome, descricao, categoria, cep, endereco, cidade, uf, complemento, logo_url, capa_url, fotos_urls, recursos_acessibilidade, youtube, instagram, facebook, tiktok, website, suspensa, latitude, longitude, created_at'
 
 interface NovaPaginaBody {
   nome?: string
@@ -83,6 +84,13 @@ export async function criarPagina(c: Context<AppEnv>) {
   const erroRecursos = validarRecursosAcessibilidade(body.recursos_acessibilidade)
   if (erroRecursos) return c.json({ error: erroRecursos }, 400)
 
+  const coordenadas = await geocodificarEndereco({
+    endereco: body.endereco,
+    cidade: body.cidade,
+    uf: body.uf,
+    cep: body.cep,
+  })
+
   const { data, error } = await supabase
     .from('paginas')
     .insert({
@@ -102,6 +110,8 @@ export async function criarPagina(c: Context<AppEnv>) {
       tiktok: body.tiktok ?? null,
       website: body.website ?? null,
       criado_por_usuario: userId,
+      latitude: coordenadas?.latitude ?? null,
+      longitude: coordenadas?.longitude ?? null,
     })
     .select(PAGINA_COLUNAS)
     .single()
@@ -160,7 +170,7 @@ export async function atualizarPagina(c: Context<AppEnv>) {
   const erroRecursos = validarRecursosAcessibilidade(body?.recursos_acessibilidade)
   if (erroRecursos) return c.json({ error: erroRecursos }, 400)
 
-  const patch: Record<string, string | string[] | null> = {}
+  const patch: Record<string, string | string[] | number | null> = {}
   if (body?.nome) patch.nome = body.nome
   if (body?.descricao !== undefined) patch.descricao = body.descricao ?? ''
   if (body?.categoria !== undefined) patch.categoria = body.categoria
@@ -175,6 +185,20 @@ export async function atualizarPagina(c: Context<AppEnv>) {
   if (body?.facebook !== undefined) patch.facebook = body.facebook
   if (body?.tiktok !== undefined) patch.tiktok = body.tiktok
   if (body?.website !== undefined) patch.website = body.website
+
+  if (body?.endereco !== undefined || body?.cidade !== undefined || body?.uf !== undefined || body?.cep !== undefined) {
+    const { data: atual } = await supabase.from('paginas').select('endereco, cidade, uf, cep').eq('id', id).single()
+    const coordenadas = await geocodificarEndereco({
+      endereco: body?.endereco ?? atual?.endereco,
+      cidade: body?.cidade ?? atual?.cidade,
+      uf: body?.uf ?? atual?.uf,
+      cep: body?.cep ?? atual?.cep,
+    })
+    if (coordenadas) {
+      patch.latitude = coordenadas.latitude
+      patch.longitude = coordenadas.longitude
+    }
+  }
 
   const { data, error } = await supabase.from('paginas').update(patch).eq('id', id).select(PAGINA_COLUNAS).single()
 
