@@ -20,7 +20,7 @@ export async function convidarColaborador(c: Context<AppEnv>) {
   const { data, error } = await supabase
     .from('vinculos')
     .insert({ pagina_id: paginaId, usuario_id: usuarioId, papel: 'colaborador' })
-    .select('id, usuario_id, papel, created_at')
+    .select('id, usuario_id, papel, created_at, usuarios(nome)')
     .single()
 
   if (error) return c.json({ error: error.message }, 400)

@@ -137,7 +137,7 @@ export async function obterPagina(c: Context<AppEnv>) {
   if (error) return c.json({ error: 'Página não encontrada ou sem acesso' }, 404)
 
   const [{ data: vinculos }, { data: avaliacoes }, { data: certificados }] = await Promise.all([
-    supabase.from('vinculos').select('id, usuario_id, papel, created_at').eq('pagina_id', id),
+    supabase.from('vinculos').select('id, usuario_id, papel, created_at, usuarios(nome)').eq('pagina_id', id),
     supabase
       .from('avaliacoes')
       .select('id, usuario_id, nota, comentario, resposta, respondido_em, sinalizada, created_at')
