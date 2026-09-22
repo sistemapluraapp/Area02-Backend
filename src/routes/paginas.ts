@@ -108,11 +108,9 @@ export async function criarPagina(c: Context<AppEnv>) {
 
   if (error) return c.json({ error: error.message }, 400)
 
-  const { error: vinculoError } = await supabase
-    .from('vinculos')
-    .insert({ pagina_id: data.id, usuario_id: userId, papel: 'administrador' })
-
-  if (vinculoError) return c.json({ error: vinculoError.message }, 500)
+  // Nota: o vínculo de administrador para o criador é criado automaticamente
+  // por um trigger no banco (trg_criar_vinculo_administrador) ao inserir a
+  // página — inserir aqui de novo causaria violação de chave duplicada.
 
   return c.json(data, 201)
 }
