@@ -32,7 +32,7 @@ const RECURSOS = [
 ]
 
 const PAGINA_COLUNAS =
-  'id, tipo, nome, descricao, categoria, cep, endereco, cidade, uf, complemento, capa_url, fotos_urls, recursos_acessibilidade, youtube, instagram, facebook, tiktok, website, created_at'
+  'id, tipo, nome, descricao, categoria, cep, endereco, cidade, uf, complemento, logo_url, capa_url, fotos_urls, recursos_acessibilidade, youtube, instagram, facebook, tiktok, website, created_at'
 
 interface NovaPaginaBody {
   nome?: string
@@ -179,6 +179,24 @@ export async function atualizarPagina(c: Context<AppEnv>) {
   const { data, error } = await supabase.from('paginas').update(patch).eq('id', id).select(PAGINA_COLUNAS).single()
 
   if (error) return c.json({ error: error.message }, 400)
+  return c.json(data)
+}
+
+export async function uploadLogo(c: Context<AppEnv>) {
+  const supabase = c.get('supabase')
+  const paginaId = c.req.param('id') as string
+  const body = await c.req.json<{ imagem_base64?: string; extensao?: string }>().catch(() => null)
+
+  if (!body?.imagem_base64 || !body.extensao) {
+    return c.json({ error: 'Campos obrigatórios: imagem_base64, extensao' }, 400)
+  }
+
+  const { url, erro } = await uploadFotoPagina(supabase, paginaId, 'logo', body.imagem_base64, body.extensao)
+  if (erro) return c.json({ error: erro }, 400)
+
+  const { data, error } = await supabase.from('paginas').update({ logo_url: url }).eq('id', paginaId).select('logo_url').single()
+  if (error) return c.json({ error: error.message }, 500)
+
   return c.json(data)
 }
 
