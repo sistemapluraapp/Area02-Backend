@@ -2,7 +2,10 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth } from './middleware/auth'
 import { login, signup, refresh } from './routes/auth'
-import { criarPagina, minhasPaginas, obterPagina, atualizarPagina, uploadLogo, uploadCapa, adicionarFoto, removerFoto } from './routes/paginas'
+import { criarPagina, minhasPaginas, obterPagina, atualizarPagina, uploadLogo, uploadCapa } from './routes/paginas'
+import { adicionarFoto, adicionarLink, atualizarMidia, removerMidia } from './routes/midias'
+import { criarExperiencia, atualizarExperiencia, removerExperiencia, uploadImagemExperiencia } from './routes/experiencias'
+import { listarOpcoes } from './routes/opcoes'
 import { convidarColaborador, removerColaborador } from './routes/colaboradores'
 import { responderAvaliacao } from './routes/avaliacoes'
 import { solicitarCertificado, listarCertificados } from './routes/certificados'
@@ -41,8 +44,18 @@ app.get('/paginas/:id', obterPagina)
 app.put('/paginas/:id', atualizarPagina)
 app.post('/paginas/:id/logo', uploadLogo)
 app.post('/paginas/:id/capa', uploadCapa)
-app.post('/paginas/:id/fotos', adicionarFoto)
-app.delete('/paginas/:id/fotos', removerFoto)
+
+app.post('/paginas/:id/midias/foto', adicionarFoto)
+app.post('/paginas/:id/midias/link', adicionarLink)
+app.patch('/paginas/:id/midias/:midiaId', atualizarMidia)
+app.delete('/paginas/:id/midias/:midiaId', removerMidia)
+
+app.post('/paginas/:id/experiencias', criarExperiencia)
+app.put('/paginas/:id/experiencias/:experienciaId', atualizarExperiencia)
+app.delete('/paginas/:id/experiencias/:experienciaId', removerExperiencia)
+app.post('/paginas/:id/experiencias/:experienciaId/imagem', uploadImagemExperiencia)
+
+app.get('/opcoes', listarOpcoes)
 
 app.post('/paginas/:id/colaboradores', convidarColaborador)
 app.delete('/paginas/:id/colaboradores/:vinculoId', removerColaborador)
