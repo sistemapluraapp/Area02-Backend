@@ -210,8 +210,8 @@ alter table public.paginas
 -- As duas páginas já existentes ficam isentas do CNPJ
 update public.paginas set legado = true;
 
-alter table public.paginas
-  add constraint paginas_cnpj_obrigatorio check (legado or cnpj is not null);
+-- A obrigatoriedade do CNPJ (paginas_cnpj_obrigatorio) só é ativada no deploy
+-- da versão nova: ver 20260923_fase1b_regras_producao.sql
 create unique index paginas_cnpj_unico on public.paginas (cnpj) where cnpj is not null;
 
 -- legado só pode ser definido pela migration: usuários não conseguem se isentar
@@ -344,19 +344,17 @@ grant select, update, delete on public.denuncias_informacao to area04_backend;
 
 -- -----------------------------------------------------------------------------
 -- 8. Moderação de comentários/avaliações
---    Novas avaliações entram como 'pendente' e só aparecem publicamente
---    depois de aprovadas pela Área 04.
+--    Estrutura da moderação. A regra "nasce pendente e só aparece depois de
+--    aprovada" é ativada no deploy (20260923_fase1b_regras_producao.sql).
 -- -----------------------------------------------------------------------------
 alter table public.avaliacoes
-  add column status text not null default 'pendente' check (status in ('pendente', 'aprovado', 'reprovado')),
+  -- default 'aprovado' até o deploy: o site em produção ainda não tem moderação
+  add column status text not null default 'aprovado' check (status in ('pendente', 'aprovado', 'reprovado')),
   add column moderado_em timestamptz,
   add column motivo_moderacao text;
 
 update public.avaliacoes set status = 'aprovado', moderado_em = now();
 
-drop policy avaliacoes_select_public on public.avaliacoes;
-create policy avaliacoes_select_public on public.avaliacoes for select to anon, authenticated
-  using (status = 'aprovado' or usuario_id = (select auth.uid()) or internal.tem_vinculo(pagina_id));
 create policy area04_update_avaliacoes on public.avaliacoes for update to area04_backend using (true) with check (true);
 grant update (status, moderado_em, motivo_moderacao) on public.avaliacoes to area04_backend;
 
@@ -401,22 +399,6 @@ begin
   return new;
 end;
 $$;
-
-create or replace function internal.avaliacao_nasce_pendente()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  if current_user <> 'area04_backend' then
-    new.status := 'pendente';
-    new.moderado_em := null;
-    new.motivo_moderacao := null;
-  end if;
-  return new;
-end;
-$$;
-
-create trigger trg_avaliacao_nasce_pendente
-  before insert on public.avaliacoes
-  for each row execute function internal.avaliacao_nasce_pendente();
 
 -- Autor público no formato "Mariana S." + avatar, só para avaliações aprovadas
 create or replace function public.avaliacoes_publicas(p_pagina_id uuid)
