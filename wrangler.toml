@@ -10,3 +10,13 @@ SUPABASE_URL = "https://uoembacxxnkuwldmdgcu.supabase.co"
 # aqui como var normal, não como secret.
 SUPABASE_ANON_KEY = "sb_publishable_LHnLAUk6M4ek94aokap89g__nL-ySby"
 AREA = "02"
+
+# Ambiente de teste (branch claude/clever-knuth-bx0368): Worker separado,
+# area02-backend-teste. Publicado por .github/workflows/deploy-teste.yml
+[env.teste]
+name = "area02-backend-teste"
+
+[env.teste.vars]
+SUPABASE_URL = "https://uoembacxxnkuwldmdgcu.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_LHnLAUk6M4ek94aokap89g__nL-ySby"
+AREA = "02"
