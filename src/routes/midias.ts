@@ -40,6 +40,10 @@ export async function adicionarFoto(c: Context<AppEnv>) {
   const body = await c.req.json<MidiaBody>().catch(() => null)
 
   if (!body?.imagem_base64 || !body.extensao) return c.json({ error: 'Campos obrigatórios: imagem_base64, extensao' }, 400)
+  // A descrição é o que um leitor de tela lê no lugar da foto.
+  if ((body.texto_alt?.trim().length ?? 0) < 5) {
+    return c.json({ error: 'Descreva a foto (mínimo 5 caracteres) para que pessoas cegas saibam o que ela mostra' }, 400)
+  }
   const erroMeta = validarMetadados(body)
   if (erroMeta) return c.json({ error: erroMeta }, 400)
 

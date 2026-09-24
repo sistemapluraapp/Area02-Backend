@@ -21,7 +21,7 @@ export const PAGINA_COLUNAS = [
   'ponto_referencia, como_chegar_carro, como_chegar_transporte, rota_acessivel',
   'horarios, feriados, requer_agendamento, tempo_medio, antecedencia',
   'logo_url, capa_url, recursos_acessibilidade, destaques_acessibilidade, observacoes_recursos',
-  'antes_de_ir, antes_de_ir_observacoes, seguranca, suspensa, created_at, updated_at',
+  'antes_de_ir, antes_de_ir_observacoes, seguranca, como_e_o_lugar, video_libras, suspensa, created_at, updated_at',
 ].join(', ')
 
 export const TEMAS = ['plura', 'azul_claro', 'azul_escuro', 'verde', 'amarelo', 'rosa', 'branca', 'marrom', 'cinza']
@@ -52,6 +52,7 @@ const TEXTOS: Record<string, number> = {
   tempo_medio: 80,
   antecedencia: 80,
   antes_de_ir_observacoes: 1000,
+  como_e_o_lugar: 2000,
 }
 
 export type PaginaBody = Record<string, unknown>
@@ -112,6 +113,12 @@ export function montarPatch(body: PaginaBody, opcoes: OpcoesArea, atual: PaginaA
     const url = typeof body.video_apresentacao === 'string' ? body.video_apresentacao.trim() : ''
     if (url && !youtubeValido(url)) return { erro: 'O vídeo de apresentação deve ser um link do YouTube' }
     patch.video_apresentacao = url || null
+  }
+
+  if (body.video_libras !== undefined) {
+    const url = typeof body.video_libras === 'string' ? body.video_libras.trim() : ''
+    if (url && !youtubeValido(url)) return { erro: 'A apresentação em Libras deve ser um link do YouTube' }
+    patch.video_libras = url || null
   }
 
   if (body.categoria !== undefined) {
