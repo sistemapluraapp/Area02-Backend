@@ -2,6 +2,7 @@ import type { Context } from 'hono'
 import type { AppEnv } from '../types'
 import { uploadFotoPagina } from '../lib/fotos'
 import { carregarOpcoesValidas, codigosInvalidos } from '../lib/catalogo'
+import { validarTextoRico } from '../lib/textoRico'
 
 // Experiências turísticas do empreendimento (cards na página pública).
 
@@ -18,6 +19,9 @@ const TEXTOS: Record<string, number> = {
 
 type ExperienciaBody = Record<string, unknown>
 
+// Campos editados com o EditorRico (HTML): o limite conta só o texto visível
+const TEXTOS_RICOS = new Set(['descricao', 'equipamentos', 'o_que_levar'])
+
 async function montarPatch(c: Context<AppEnv>, body: ExperienciaBody, criando: boolean) {
   const patch: Record<string, unknown> = {}
 
@@ -26,7 +30,10 @@ async function montarPatch(c: Context<AppEnv>, body: ExperienciaBody, criando: b
     const valor = body[campo]
     if (valor !== null && typeof valor !== 'string') return { erro: `${campo} deve ser texto` }
     const texto = typeof valor === 'string' ? valor.trim() : ''
-    if (texto.length > limite) return { erro: `${campo} deve ter no máximo ${limite} caracteres` }
+    if (TEXTOS_RICOS.has(campo)) {
+      const erro = validarTextoRico(campo, texto, limite)
+      if (erro) return { erro }
+    } else if (texto.length > limite) return { erro: `${campo} deve ter no máximo ${limite} caracteres` }
     patch[campo] = texto || null
   }
   if (criando && !patch.nome) return { erro: 'Campo obrigatório: nome' }

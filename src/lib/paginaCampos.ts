@@ -1,3 +1,4 @@
+import { validarTextoRico } from './textoRico'
 import type { OpcoesArea } from './catalogo'
 import { codigosInvalidos } from './catalogo'
 import {
@@ -55,6 +56,9 @@ const TEXTOS: Record<string, number> = {
   como_e_o_lugar: 2000,
 }
 
+// Campos editados com o EditorRico (HTML): o limite conta só o texto visível
+const TEXTOS_RICOS = new Set(['descricao', 'como_chegar_carro', 'como_chegar_transporte', 'rota_acessivel', 'feriados', 'como_e_o_lugar'])
+
 export type PaginaBody = Record<string, unknown>
 
 export interface PaginaAtual {
@@ -78,7 +82,10 @@ export function montarPatch(body: PaginaBody, opcoes: OpcoesArea, atual: PaginaA
     const valor = body[campo]
     if (valor !== null && typeof valor !== 'string') return { erro: `${campo} deve ser texto` }
     const texto = typeof valor === 'string' ? valor.trim() : ''
-    if (texto.length > limite) return { erro: `${campo} deve ter no máximo ${limite} caracteres` }
+    if (TEXTOS_RICOS.has(campo)) {
+      const erro = validarTextoRico(campo, texto, limite)
+      if (erro) return { erro }
+    } else if (texto.length > limite) return { erro: `${campo} deve ter no máximo ${limite} caracteres` }
     patch[campo] = texto || null
   }
 
@@ -194,11 +201,12 @@ export function montarPatch(body: PaginaBody, opcoes: OpcoesArea, atual: PaginaA
   if (body.seguranca !== undefined) {
     const erro = validarObjetoDeTextos(body.seguranca, 'seguranca', CAMPOS_SEGURANCA)
     if (erro) return { erro }
-    patch.seguranca = Object.fromEntries(
-      Object.entries(body.seguranca as Record<string, string>)
-        .map(([k, v]) => [k, v.trim().slice(0, 2000)])
-        .filter(([, v]) => v)
-    )
+    const textos = Object.entries(body.seguranca as Record<string, string>).map(([k, v]) => [k, v.trim()] as const)
+    for (const [k, v] of textos) {
+      const erroTexto = validarTextoRico(`seguranca.${k}`, v, 2000)
+      if (erroTexto) return { erro: erroTexto }
+    }
+    patch.seguranca = Object.fromEntries(textos.filter(([, v]) => v))
   }
 
   return { patch }
