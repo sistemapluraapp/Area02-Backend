@@ -1,4 +1,5 @@
 import { validarTextoRico } from './textoRico'
+import { validarContatos } from './contatos'
 import type { OpcoesArea } from './catalogo'
 import { codigosInvalidos } from './catalogo'
 import {
@@ -23,6 +24,7 @@ export const PAGINA_COLUNAS = [
   'horarios, feriados, requer_agendamento, tempo_medio, antecedencia',
   'logo_url, capa_url, recursos_acessibilidade, destaques_acessibilidade, observacoes_recursos',
   'antes_de_ir, antes_de_ir_observacoes, seguranca, como_e_o_lugar, video_libras, suspensa, created_at, updated_at',
+  'contatos, mapa_link, localizacao_comentarios, excluida_em',
 ].join(', ')
 
 export const TEMAS = ['plura', 'azul_claro', 'azul_escuro', 'verde', 'amarelo', 'rosa', 'branca', 'marrom', 'cinza']
@@ -54,10 +56,11 @@ const TEXTOS: Record<string, number> = {
   antecedencia: 80,
   antes_de_ir_observacoes: 1000,
   como_e_o_lugar: 2000,
+  localizacao_comentarios: 2000,
 }
 
 // Campos editados com o EditorRico (HTML): o limite conta só o texto visível
-const TEXTOS_RICOS = new Set(['descricao', 'como_chegar_carro', 'como_chegar_transporte', 'rota_acessivel', 'feriados', 'como_e_o_lugar'])
+const TEXTOS_RICOS = new Set(['descricao', 'como_chegar_carro', 'como_chegar_transporte', 'rota_acessivel', 'feriados', 'como_e_o_lugar', 'localizacao_comentarios'])
 
 export type PaginaBody = Record<string, unknown>
 
@@ -126,6 +129,20 @@ export function montarPatch(body: PaginaBody, opcoes: OpcoesArea, atual: PaginaA
     const url = typeof body.video_libras === 'string' ? body.video_libras.trim() : ''
     if (url && !youtubeValido(url)) return { erro: 'A apresentação em Libras deve ser um link do YouTube' }
     patch.video_libras = url || null
+  }
+
+  if (body.mapa_link !== undefined) {
+    let url = typeof body.mapa_link === 'string' ? body.mapa_link.trim() : ''
+    if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`
+    url = url.replace(/^http:/i, 'https:')
+    if (url && (!urlValida(url) || url.length > 500)) return { erro: 'Link do Google Maps inválido' }
+    patch.mapa_link = url || null
+  }
+
+  if (body.contatos !== undefined) {
+    const resultado = validarContatos(body.contatos)
+    if (resultado.erro !== undefined) return { erro: resultado.erro }
+    patch.contatos = resultado.contatos
   }
 
   if (body.categoria !== undefined) {

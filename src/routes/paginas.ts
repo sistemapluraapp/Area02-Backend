@@ -146,6 +146,38 @@ export async function atualizarPagina(c: Context<AppEnv>) {
   return c.json(data)
 }
 
+// Lixeira: a página some do público na hora e é excluída de vez após 30 dias
+// (cron da Área 04). Só administradores da página conseguem (RLS de update).
+export async function excluirPagina(c: Context<AppEnv>) {
+  const supabase = c.get('supabase')
+  const id = c.req.param('id') as string
+  const { data, error } = await supabase
+    .from('paginas')
+    .update({ excluida_em: new Date().toISOString() })
+    .eq('id', id)
+    .is('excluida_em', null)
+    .select('id, excluida_em')
+    .maybeSingle()
+  if (error) return c.json({ error: error.message }, 500)
+  if (!data) return c.json({ error: 'Página não encontrada, já na lixeira ou sem permissão de administrador' }, 404)
+  return c.json(data)
+}
+
+export async function restaurarPagina(c: Context<AppEnv>) {
+  const supabase = c.get('supabase')
+  const id = c.req.param('id') as string
+  const { data, error } = await supabase
+    .from('paginas')
+    .update({ excluida_em: null })
+    .eq('id', id)
+    .not('excluida_em', 'is', null)
+    .select(PAGINA_COLUNAS)
+    .maybeSingle()
+  if (error) return c.json({ error: error.message }, 500)
+  if (!data) return c.json({ error: 'Página não encontrada na lixeira ou sem permissão de administrador' }, 404)
+  return c.json(data)
+}
+
 async function enviarImagemPrincipal(c: Context<AppEnv>, campo: 'logo_url' | 'capa_url', nomeArquivo: string) {
   const supabase = c.get('supabase')
   const paginaId = c.req.param('id') as string
