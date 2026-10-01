@@ -5,6 +5,8 @@ export type Bindings = {
   SUPABASE_ANON_KEY: string
   AREA: string
   RESEND_API_KEY: string
+  // Remetente dos e-mails (ex.: "Plura <nao-responda@plura.app.br>")
+  EMAIL_REMETENTE?: string
 }
 
 export type Variables = {

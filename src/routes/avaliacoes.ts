@@ -1,6 +1,7 @@
 import type { Context } from 'hono'
 import type { AppEnv } from '../types'
 import { enviarEmail } from '../lib/email'
+import { escaparHtml, montarAviso } from '../lib/emailLayout'
 
 export async function responderAvaliacao(c: Context<AppEnv>) {
   const supabase = c.get('supabase')
@@ -27,12 +28,17 @@ export async function responderAvaliacao(c: Context<AppEnv>) {
     })
 
     if (!rpcError && email) {
-      const trecho = body.resposta.length > 200 ? `${body.resposta.slice(0, 200)}...` : body.resposta
+      const trecho = body.resposta.length > 200 ? `${body.resposta.slice(0, 200)}…` : body.resposta
       await enviarEmail(
         c.env.RESEND_API_KEY,
         email,
-        '[Plura] Você recebeu uma resposta à sua avaliação',
-        `<p>A página respondeu à sua avaliação.</p><p><strong>Resposta:</strong> ${trecho}</p>`,
+        'Você recebeu uma resposta à sua avaliação na Plura',
+        montarAviso(
+          'Sua avaliação foi respondida',
+          `<p>A página que você avaliou respondeu ao seu comentário:</p><p style="padding:12px 16px;border-left:4px solid #0062e6;background:#f2f6ff;">${escaparHtml(trecho)}</p>`,
+          { texto: 'Ver na Plura', link: 'https://plura.app.br/perfil' },
+        ),
+        c.env.EMAIL_REMETENTE,
       )
     } else if (rpcError) {
       console.error('Erro ao notificar resposta de avaliação:', rpcError.message)
