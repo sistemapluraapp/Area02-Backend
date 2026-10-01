@@ -5,7 +5,7 @@ import { login, signup, refresh } from './routes/auth'
 import { criarPagina, minhasPaginas, obterPagina, atualizarPagina, uploadLogo, uploadCapa, excluirPagina, restaurarPagina } from './routes/paginas'
 import { adicionarFoto, adicionarLink, atualizarMidia, removerMidia } from './routes/midias'
 import { criarExperiencia, atualizarExperiencia, removerExperiencia, uploadImagemExperiencia } from './routes/experiencias'
-import { listarOpcoes } from './routes/opcoes'
+import { listarOpcoes, obterTermo } from './routes/opcoes'
 import { convidarColaborador, removerColaborador } from './routes/colaboradores'
 import { responderAvaliacao } from './routes/avaliacoes'
 import { solicitarCertificado, listarCertificados } from './routes/certificados'
@@ -58,6 +58,7 @@ app.delete('/paginas/:id/experiencias/:experienciaId', removerExperiencia)
 app.post('/paginas/:id/experiencias/:experienciaId/imagem', uploadImagemExperiencia)
 
 app.get('/opcoes', listarOpcoes)
+app.get('/termos/:chave', obterTermo)
 
 app.post('/paginas/:id/colaboradores', convidarColaborador)
 app.delete('/paginas/:id/colaboradores/:vinculoId', removerColaborador)

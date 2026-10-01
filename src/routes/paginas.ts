@@ -20,6 +20,7 @@ export async function criarPagina(c: Context<AppEnv>) {
   const userId = c.get('userId')
   const body = await c.req.json<PaginaBody>().catch(() => null)
   if (!body) return c.json({ error: 'Corpo da requisição inválido' }, 400)
+  if (body.aceite_termos !== true) return c.json({ error: 'É preciso aceitar os termos e condições para criar a página' }, 400)
 
   const opcoes = await carregarOpcoesValidas(supabase)
   const resultado = montarPatch(body, opcoes, null)
@@ -39,6 +40,7 @@ export async function criarPagina(c: Context<AppEnv>) {
       ...campos,
       tipo: AREA_CONFIG.tipoPagina,
       [AREA_CONFIG.colunaCriador]: userId,
+      termos_aceitos_em: new Date().toISOString(),
       latitude: coordenadas?.latitude ?? null,
       longitude: coordenadas?.longitude ?? null,
     })

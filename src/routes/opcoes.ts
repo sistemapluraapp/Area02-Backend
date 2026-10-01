@@ -40,3 +40,13 @@ export async function listarOpcoes(c: Context<AppEnv>) {
     })),
   })
 }
+
+// Termos e condições editados no ADM (Comunicação → Termos e condições)
+export async function obterTermo(c: Context<AppEnv>) {
+  const chave = c.req.param('chave') as string
+  if (!/^termos_[a-z0-9_]+$/.test(chave)) return c.json({ error: 'Termo não encontrado' }, 404)
+  const { data, error } = await c.get('supabase').from('termos').select('chave, titulo, conteudo_html, atualizado_em').eq('chave', chave).maybeSingle()
+  if (error) return c.json({ error: error.message }, 500)
+  if (!data) return c.json({ error: 'Termo não encontrado' }, 404)
+  return c.json(data)
+}
