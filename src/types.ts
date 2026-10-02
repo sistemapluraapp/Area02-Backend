@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type Bindings = {
+  CSC_API_KEY?: string
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
   AREA: string

@@ -3,6 +3,7 @@ interface EnderecoParaGeocodificar {
   cidade?: string | null
   uf?: string | null
   cep?: string | null
+  pais?: string | null
 }
 
 interface Coordenadas {
@@ -16,13 +17,14 @@ interface Coordenadas {
 // nada encontrado, API fora do ar) — geocodificação é best-effort e nunca
 // deve bloquear a criação/edição do empreendimento.
 export async function geocodificarEndereco(dados: EnderecoParaGeocodificar): Promise<Coordenadas | null> {
-  const partes = [dados.endereco, dados.cidade, dados.uf, dados.cep, 'Brasil'].filter(Boolean)
+  const pais = (dados.pais || 'BR').toUpperCase()
+  const partes = [dados.endereco, dados.cidade, dados.uf, dados.cep, pais === 'BR' ? 'Brasil' : null].filter(Boolean)
   if (partes.length < 2) return null
 
   const query = partes.join(', ')
 
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(query)}`
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=${pais.toLowerCase()}&q=${encodeURIComponent(query)}`
     const res = await fetch(url, {
       headers: { 'User-Agent': 'PluraApp/1.0 (contato: sistemapluraapp@gmail.com)' },
     })

@@ -19,7 +19,7 @@ import {
 export const PAGINA_COLUNAS = [
   'id, tipo, nome, subtitulo, descricao_curta, descricao, slogan, diferencial, categoria, faixa_preco, tags, tema',
   'cnpj, legado, whatsapp, instagram, website, youtube, facebook, tiktok, video_apresentacao',
-  'cep, endereco, cidade, uf, complemento, latitude, longitude',
+  'pais, cep, endereco, cidade, uf, complemento, latitude, longitude',
   'ponto_referencia, como_chegar_carro, como_chegar_transporte, rota_acessivel',
   'horarios, feriados, requer_agendamento, tempo_medio, antecedencia',
   'logo_url, capa_url, recursos_acessibilidade, destaques_acessibilidade, observacoes_recursos',
@@ -40,7 +40,7 @@ const TEXTOS: Record<string, number> = {
   cep: 9,
   endereco: 200,
   cidade: 100,
-  uf: 2,
+  uf: 60,
   complemento: 120,
   instagram: 200,
   website: 300,
@@ -67,6 +67,7 @@ export type PaginaBody = Record<string, unknown>
 export interface PaginaAtual {
   cnpj: string | null
   recursos_acessibilidade: string[]
+  pais?: string | null
 }
 
 type Resultado = { patch: Record<string, unknown>; erro?: undefined } | { erro: string; patch?: undefined }
@@ -94,7 +95,16 @@ export function montarPatch(body: PaginaBody, opcoes: OpcoesArea, atual: PaginaA
 
   if (criando && !patch.nome) return { erro: 'Campo obrigatório: nome' }
   if (!criando && body.nome !== undefined && !patch.nome) return { erro: 'O nome não pode ficar vazio' }
-  if (patch.uf) patch.uf = String(patch.uf).toUpperCase()
+  // País (ISO alfa-2). No Brasil, uf é a sigla; nos demais, o nome do estado.
+  if (body.pais !== undefined) {
+    if (typeof body.pais !== 'string' || !/^[A-Za-z]{2}$/.test(body.pais)) return { erro: 'País inválido' }
+    patch.pais = body.pais.toUpperCase()
+  }
+  const paisFinal = (patch.pais ?? atual?.pais ?? 'BR') as string
+  if (patch.uf && paisFinal === 'BR') {
+    patch.uf = String(patch.uf).toUpperCase()
+    if (!/^[A-Z]{2}$/.test(patch.uf as string)) return { erro: 'UF inválida. Use a sigla do estado (ex.: SP).' }
+  }
 
   // CNPJ: obrigatório na criação; depois de definido não pode ser trocado
   if (body.cnpj !== undefined) {

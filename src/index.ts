@@ -15,6 +15,7 @@ import {
   marcarComoLida,
   marcarTodasComoLidas,
 } from './routes/notificacoes'
+import { listarCidades, listarEstados } from './routes/localidades'
 import type { AppEnv } from './types'
 
 const app = new Hono<AppEnv>()
@@ -59,6 +60,8 @@ app.post('/paginas/:id/experiencias/:experienciaId/imagem', uploadImagemExperien
 
 app.get('/opcoes', listarOpcoes)
 app.get('/termos/:chave', obterTermo)
+app.get('/localidades/:pais/estados', listarEstados)
+app.get('/localidades/:pais/estados/:estado/cidades', listarCidades)
 
 app.post('/paginas/:id/colaboradores', convidarColaborador)
 app.delete('/paginas/:id/colaboradores/:vinculoId', removerColaborador)

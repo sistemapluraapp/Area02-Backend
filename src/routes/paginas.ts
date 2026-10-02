@@ -6,7 +6,7 @@ import { uploadFotoPagina } from '../lib/fotos'
 import { geocodificarEndereco } from '../lib/geocoding'
 import { PAGINA_COLUNAS, montarPatch, type PaginaBody } from '../lib/paginaCampos'
 
-const CAMPOS_ENDERECO = ['endereco', 'cidade', 'uf', 'cep'] as const
+const CAMPOS_ENDERECO = ['endereco', 'cidade', 'uf', 'cep', 'pais'] as const
 
 function mensagemErroBanco(mensagem: string): { texto: string; status: 400 | 409 } {
   if (mensagem.includes('paginas_cnpj_unico')) {
@@ -32,6 +32,7 @@ export async function criarPagina(c: Context<AppEnv>) {
     cidade: campos.cidade as string | undefined,
     uf: campos.uf as string | undefined,
     cep: campos.cep as string | undefined,
+    pais: campos.pais as string | undefined,
   })
 
   const { data, error } = await supabase
@@ -111,7 +112,7 @@ export async function atualizarPagina(c: Context<AppEnv>) {
 
   const { data: atual, error: erroAtual } = await supabase
     .from('paginas')
-    .select('cnpj, recursos_acessibilidade, destaques_acessibilidade, endereco, cidade, uf, cep')
+    .select('cnpj, recursos_acessibilidade, destaques_acessibilidade, endereco, cidade, uf, cep, pais')
     .eq('id', id)
     .single()
   if (erroAtual || !atual) return c.json({ error: 'Página não encontrada ou sem acesso' }, 404)
@@ -131,6 +132,7 @@ export async function atualizarPagina(c: Context<AppEnv>) {
       cidade: (patch.cidade ?? atual.cidade) as string | null,
       uf: (patch.uf ?? atual.uf) as string | null,
       cep: (patch.cep ?? atual.cep) as string | null,
+      pais: (patch.pais ?? atual.pais) as string | null,
     })
     if (coordenadas) {
       patch.latitude = coordenadas.latitude
