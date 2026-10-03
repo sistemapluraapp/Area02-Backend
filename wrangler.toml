@@ -10,8 +10,7 @@ SUPABASE_URL = "https://uoembacxxnkuwldmdgcu.supabase.co"
 # aqui como var normal, não como secret.
 SUPABASE_ANON_KEY = "sb_publishable_LHnLAUk6M4ek94aokap89g__nL-ySby"
 AREA = "02"
-# Trocar para "Plura <nao-responda@plura.app.br>" depois de verificar o domínio no Resend
-EMAIL_REMETENTE = "Plura <onboarding@resend.dev>"
+EMAIL_REMETENTE = "Plura <nao-responda@plura.app.br>"
 
 # Ambiente de teste (branches claude/clever-knuth-bx0368 e claude/stoic-babbage-0gea8e): Worker separado,
 # area02-backend-teste. Publicado por .github/workflows/deploy-teste.yml
@@ -22,5 +21,4 @@ name = "area02-backend-teste"
 SUPABASE_URL = "https://uoembacxxnkuwldmdgcu.supabase.co"
 SUPABASE_ANON_KEY = "sb_publishable_LHnLAUk6M4ek94aokap89g__nL-ySby"
 AREA = "02"
-# Trocar para "Plura <nao-responda@plura.app.br>" depois de verificar o domínio no Resend
-EMAIL_REMETENTE = "Plura <onboarding@resend.dev>"
+EMAIL_REMETENTE = "Plura <nao-responda@plura.app.br>"
