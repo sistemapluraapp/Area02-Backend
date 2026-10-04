@@ -19,7 +19,7 @@ export async function responderAvaliacao(c: Context<AppEnv>) {
   const acesso = await carregarAcesso(c, avaliacao.pagina_id)
   if (acesso instanceof Response) return acesso
   if (!pode(acesso, 'comentarios')) {
-    return c.json({ error: 'Você não tem acesso à aba "Comentários e avaliações" desta página', codigo: 'sem_permissao' }, 403)
+    return c.json({ error: 'Você não tem acesso à aba "Avaliações de nossos usuários" desta página', codigo: 'sem_permissao' }, 403)
   }
 
   const { data, error } = await supabase

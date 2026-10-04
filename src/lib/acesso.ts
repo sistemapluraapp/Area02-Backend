@@ -33,7 +33,7 @@ export const ROTULO_ABA: Record<Aba, string> = {
   eventos: 'Eventos',
   contato: 'Contato',
   antes: 'Antes de ir e segurança',
-  comentarios: 'Comentários e avaliações',
+  comentarios: 'Avaliações de nossos usuários',
   selos: 'Selos e certificações',
   equipe: 'Equipe e logs',
 }
