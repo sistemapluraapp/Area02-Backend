@@ -17,6 +17,7 @@ import {
   marcarTodasComoLidas,
 } from './routes/notificacoes'
 import { listarCidades, listarEstados } from './routes/localidades'
+import { recuperarSenha, redefinirSenha } from './routes/senha'
 import type { AppEnv } from './types'
 
 const app = new Hono<AppEnv>()
@@ -26,6 +27,8 @@ app.use('*', cors())
 app.get('/health', (c) => c.json({ status: 'ok', area: c.env.AREA, service: 'backend' }))
 
 app.post('/auth/login', login)
+app.post('/auth/recuperar-senha', recuperarSenha)
+app.post('/auth/redefinir-senha', redefinirSenha)
 app.post('/auth/signup', signup)
 app.post('/auth/refresh', refresh)
 
@@ -34,7 +37,9 @@ app.use('*', async (c, next) => {
     c.req.path === '/health' ||
     c.req.path === '/auth/login' ||
     c.req.path === '/auth/signup' ||
-    c.req.path === '/auth/refresh'
+    c.req.path === '/auth/refresh' ||
+    c.req.path === '/auth/recuperar-senha' ||
+    c.req.path === '/auth/redefinir-senha'
   )
     return next()
   return requireAuth(c, next)
