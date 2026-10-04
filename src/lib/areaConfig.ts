@@ -5,6 +5,8 @@ export const AREA_CONFIG = {
   tipoPagina: 'privada',
   escopo: 'b2b',
   colunaCriador: 'criado_por_usuario',
-  colunaVinculo: 'usuario_id',
-  selectVinculos: 'id, usuario_id, papel, created_at, usuarios(nome)',
+  // Página da outra área: só é editada lá
+  outraArea: { nome: 'Plura Gov', url: 'https://gov.plura.app.br' },
+  // Contas Gov não colaboram em páginas B2B
+  aceitaContaGov: false,
 } as const

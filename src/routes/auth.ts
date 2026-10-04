@@ -1,5 +1,5 @@
 import type { Context } from 'hono'
-import { getAnonClient } from '../lib/supabase'
+import { getAnonClient, getUserClient } from '../lib/supabase'
 import { isValidCpf, normalizeCpf } from '../lib/cpf'
 import type { AppEnv } from '../types'
 
@@ -17,6 +17,20 @@ export async function login(c: Context<AppEnv>) {
 
   if (error || !data.session) {
     return c.json({ error: 'E-mail ou senha inválidos' }, 401)
+  }
+
+  // Contas institucionais Gov editam só em gov.plura.app.br
+  const userClient = getUserClient(c, data.session.access_token)
+  const { data: areas } = await userClient.rpc('minhas_areas').maybeSingle<{ eh_gov: boolean }>()
+  if (areas?.eh_gov) {
+    return c.json(
+      {
+        error: 'Esta é uma conta institucional da Plura Gov. Entre por gov.plura.app.br para editar as suas páginas.',
+        codigo: 'conta_gov',
+        link: 'https://gov.plura.app.br',
+      },
+      403,
+    )
   }
 
   return c.json({

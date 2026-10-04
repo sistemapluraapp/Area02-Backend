@@ -7,7 +7,8 @@ import { adicionarFoto, adicionarLink, atualizarMidia, removerMidia } from './ro
 import { criarExperiencia, atualizarExperiencia, removerExperiencia, uploadImagemExperiencia } from './routes/experiencias'
 import { atualizarEvento, criarEvento, interessadosEvento, listarEventos, removerEvento, uploadImagemEvento } from './routes/eventos'
 import { listarOpcoes, obterTermo } from './routes/opcoes'
-import { convidarColaborador, removerColaborador } from './routes/colaboradores'
+import { atualizarColaborador, convidarColaborador, listarEquipe, listarLogs, removerColaborador } from './routes/colaboradores'
+import { exigirAcessoPagina } from './lib/acesso'
 import { responderAvaliacao } from './routes/avaliacoes'
 import { solicitarCertificado, listarCertificados } from './routes/certificados'
 import {
@@ -45,6 +46,9 @@ app.use('*', async (c, next) => {
   return requireAuth(c, next)
 })
 
+// Página desta área + equipe + permissão da aba + log (lib/acesso.ts)
+app.use('/paginas/*', exigirAcessoPagina)
+
 app.post('/paginas', criarPagina)
 app.get('/minhas-paginas', minhasPaginas)
 app.get('/paginas/:id', obterPagina)
@@ -76,7 +80,10 @@ app.get('/termos/:chave', obterTermo)
 app.get('/localidades/:pais/estados', listarEstados)
 app.get('/localidades/:pais/estados/:estado/cidades', listarCidades)
 
+app.get('/paginas/:id/colaboradores', listarEquipe)
 app.post('/paginas/:id/colaboradores', convidarColaborador)
+app.patch('/paginas/:id/colaboradores/:vinculoId', atualizarColaborador)
+app.get('/paginas/:id/logs', listarLogs)
 app.delete('/paginas/:id/colaboradores/:vinculoId', removerColaborador)
 
 app.patch('/avaliacoes/:id/resposta', responderAvaliacao)

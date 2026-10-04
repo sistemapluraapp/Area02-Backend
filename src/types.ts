@@ -14,6 +14,10 @@ export type Bindings = {
 export type Variables = {
   supabase: SupabaseClient
   userId: string
+  // Vínculo de quem chama com a página da rota (middleware de acesso)
+  acesso: import('./lib/acesso').Acesso
+  // Texto do log da página quando a rota quer algo mais específico
+  acaoLog: string
 }
 
 export type AppEnv = { Bindings: Bindings; Variables: Variables }

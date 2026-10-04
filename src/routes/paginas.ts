@@ -1,10 +1,15 @@
 import type { Context } from 'hono'
 import type { AppEnv } from '../types'
 import { AREA_CONFIG } from '../lib/areaConfig'
+import { pode } from '../lib/acesso'
+import { meuAcesso } from './colaboradores'
 import { carregarOpcoesValidas } from '../lib/catalogo'
 import { uploadFotoPagina } from '../lib/fotos'
 import { geocodificarEndereco } from '../lib/geocoding'
 import { PAGINA_COLUNAS, montarPatch, type PaginaBody } from '../lib/paginaCampos'
+
+// string (não literal) para as comparações compartilhadas entre as áreas
+const TIPO_AREA: string = AREA_CONFIG.tipoPagina
 
 const CAMPOS_ENDERECO = ['endereco', 'cidade', 'uf', 'cep', 'pais'] as const
 
@@ -20,6 +25,10 @@ export async function criarPagina(c: Context<AppEnv>) {
   const userId = c.get('userId')
   const body = await c.req.json<PaginaBody>().catch(() => null)
   if (!body) return c.json({ error: 'Corpo da requisição inválido' }, 400)
+  if (TIPO_AREA === 'publica') {
+    const { data: areas } = await supabase.rpc('minhas_areas').maybeSingle<{ eh_gov: boolean }>()
+    if (!areas?.eh_gov) return c.json({ error: 'Só contas institucionais Gov criam páginas na Plura Gov', codigo: 'nao_gov' }, 403)
+  }
   if (body.aceite_termos !== true) return c.json({ error: 'É preciso aceitar os termos e condições para criar a página' }, 400)
 
   const opcoes = await carregarOpcoesValidas(supabase)
@@ -62,13 +71,28 @@ export async function minhasPaginas(c: Context<AppEnv>) {
   const supabase = c.get('supabase')
   const userId = c.get('userId')
 
-  const { data, error } = await supabase
-    .from('vinculos')
-    .select(`papel, paginas(${PAGINA_COLUNAS})`)
-    .eq(AREA_CONFIG.colunaVinculo, userId)
+  // Usuários Plura podem colaborar em páginas Gov e vice-versa: o vínculo pode
+  // estar em qualquer das duas colunas, mas cada área só lista as suas páginas.
+  const [{ data, error }, { data: areas }] = await Promise.all([
+    supabase
+      .from('vinculos')
+      .select(`papel, cargo, permissoes, paginas(${PAGINA_COLUNAS})`)
+      .or(`usuario_id.eq.${userId},gov_conta_id.eq.${userId}`),
+    supabase.rpc('minhas_areas').maybeSingle<{ b2b: number; gov: number; eh_gov: boolean }>(),
+  ])
 
   if (error) return c.json({ error: error.message }, 500)
-  return c.json({ paginas: data })
+  const paginas = ((data ?? []) as unknown as { paginas: { tipo?: string } | null }[]).filter((v) => v.paginas?.tipo === TIPO_AREA)
+  return c.json({
+    paginas,
+    // Para a mensagem "você não tem páginas aqui" com atalhos para a outra área
+    outra_area: {
+      nome: AREA_CONFIG.outraArea.nome,
+      url: AREA_CONFIG.outraArea.url,
+      total: TIPO_AREA === 'privada' ? (areas?.gov ?? 0) : (areas?.b2b ?? 0),
+    },
+    pode_criar: TIPO_AREA === 'privada' ? !areas?.eh_gov : !!areas?.eh_gov,
+  })
 }
 
 export async function obterPagina(c: Context<AppEnv>) {
@@ -79,7 +103,9 @@ export async function obterPagina(c: Context<AppEnv>) {
   if (error) return c.json({ error: 'Página não encontrada ou sem acesso' }, 404)
 
   const [{ data: vinculos }, { data: avaliacoes }, { data: certificados }, { data: midias }, { data: experiencias }] = await Promise.all([
-    supabase.from('vinculos').select(AREA_CONFIG.selectVinculos).eq('pagina_id', id),
+    pode(c.get('acesso'), 'equipe')
+      ? supabase.rpc('equipe_pagina', { p_pagina_id: id })
+      : Promise.resolve({ data: [] }),
     supabase
       .from('avaliacoes')
       .select('id, usuario_id, nota, comentario, resposta, respondido_em, sinalizada, status, created_at')
@@ -96,6 +122,7 @@ export async function obterPagina(c: Context<AppEnv>) {
 
   return c.json({
     ...(pagina as object),
+    meu_acesso: meuAcesso(c),
     vinculos: vinculos ?? [],
     avaliacoes: avaliacoes ?? [],
     certificados: certificados ?? [],

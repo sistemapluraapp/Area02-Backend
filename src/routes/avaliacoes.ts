@@ -1,4 +1,5 @@
 import type { Context } from 'hono'
+import { carregarAcesso, pode, registrarLog } from '../lib/acesso'
 import type { AppEnv } from '../types'
 import { enviarEmail } from '../lib/email'
 import { escaparHtml, montarAviso } from '../lib/emailLayout'
@@ -12,6 +13,15 @@ export async function responderAvaliacao(c: Context<AppEnv>) {
     return c.json({ error: 'Campo obrigatório: resposta' }, 400)
   }
 
+  // Responder exige a aba "Comentários" na equipe de uma página desta área
+  const { data: avaliacao } = await supabase.from('avaliacoes').select('pagina_id').eq('id', id).maybeSingle()
+  if (!avaliacao) return c.json({ error: 'Avaliação não encontrada' }, 404)
+  const acesso = await carregarAcesso(c, avaliacao.pagina_id)
+  if (acesso instanceof Response) return acesso
+  if (!pode(acesso, 'comentarios')) {
+    return c.json({ error: 'Você não tem acesso à aba "Comentários e avaliações" desta página', codigo: 'sem_permissao' }, 403)
+  }
+
   const { data, error } = await supabase
     .from('avaliacoes')
     .update({ resposta: body.resposta })
@@ -20,6 +30,7 @@ export async function responderAvaliacao(c: Context<AppEnv>) {
     .single()
 
   if (error) return c.json({ error: error.message }, 400)
+  await registrarLog(c, avaliacao.pagina_id, 'Respondeu um comentário')
 
   try {
     const { data: email, error: rpcError } = await supabase.rpc('notificar_resposta_avaliacao', {
