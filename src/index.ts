@@ -7,7 +7,7 @@ import { adicionarFoto, adicionarLink, atualizarMidia, removerMidia } from './ro
 import { criarExperiencia, atualizarExperiencia, removerExperiencia, uploadImagemExperiencia } from './routes/experiencias'
 import { atualizarEvento, criarEvento, interessadosEvento, listarEventos, removerEvento, uploadImagemEvento } from './routes/eventos'
 import { listarOpcoes, obterTermo } from './routes/opcoes'
-import { atualizarColaborador, convidarColaborador, listarEquipe, listarLogs, removerColaborador } from './routes/colaboradores'
+import { atualizarColaborador, convidarColaborador, listarEquipe, listarLogs, meusConvites, reenviarConvite, removerColaborador, responderConvite } from './routes/colaboradores'
 import { exigirAcessoPagina } from './lib/acesso'
 import { responderAvaliacao } from './routes/avaliacoes'
 import { solicitarCertificado, listarCertificados } from './routes/certificados'
@@ -83,6 +83,12 @@ app.get('/localidades/:pais/estados/:estado/cidades', listarCidades)
 app.get('/paginas/:id/colaboradores', listarEquipe)
 app.post('/paginas/:id/colaboradores', convidarColaborador)
 app.patch('/paginas/:id/colaboradores/:vinculoId', atualizarColaborador)
+app.post('/paginas/:id/colaboradores/:vinculoId/reenviar', reenviarConvite)
+
+// Convites recebidos: a pessoa convidada aceita ou recusa
+app.get('/convites-equipe', meusConvites)
+app.post('/convites-equipe/:id/aceitar', responderConvite)
+app.post('/convites-equipe/:id/recusar', responderConvite)
 app.get('/paginas/:id/logs', listarLogs)
 app.delete('/paginas/:id/colaboradores/:vinculoId', removerColaborador)
 

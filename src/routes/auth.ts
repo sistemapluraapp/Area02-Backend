@@ -21,7 +21,7 @@ export async function login(c: Context<AppEnv>) {
 
   // Contas institucionais Gov editam só em gov.plura.app.br
   const userClient = getUserClient(c, data.session.access_token)
-  const { data: areas } = await userClient.rpc('minhas_areas').maybeSingle<{ eh_gov: boolean }>()
+  const { data: areas } = await userClient.rpc('minhas_areas_convites').maybeSingle<{ eh_gov: boolean }>()
   if (areas?.eh_gov) {
     return c.json(
       {

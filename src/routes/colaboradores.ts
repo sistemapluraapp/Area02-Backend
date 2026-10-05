@@ -9,6 +9,7 @@ import { escaparHtml, montarAviso } from '../lib/emailLayout'
 // middleware exigirAcessoPagina, que exige a aba "equipe".
 
 const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const DIAS_CONVITE = 14
 
 function validarPermissoes(valor: unknown): Aba[] | null {
   if (valor === undefined) return []
@@ -24,13 +25,13 @@ function validarCargo(valor: unknown): string | null | undefined {
 }
 
 async function membro(c: Context<AppEnv>, paginaId: string, vinculoId: string) {
-  const { data } = await c.get('supabase').rpc('equipe_pagina', { p_pagina_id: paginaId })
+  const { data } = await c.get('supabase').rpc('equipe_da_pagina', { p_pagina_id: paginaId })
   return ((data ?? []) as { id: string }[]).find((m) => m.id === vinculoId) ?? null
 }
 
 export async function listarEquipe(c: Context<AppEnv>) {
   const paginaId = c.req.param('id') as string
-  const { data, error } = await c.get('supabase').rpc('equipe_pagina', { p_pagina_id: paginaId })
+  const { data, error } = await c.get('supabase').rpc('equipe_da_pagina', { p_pagina_id: paginaId })
   if (error) return c.json({ error: error.message }, 500)
   return c.json({ equipe: data ?? [], abas: ABAS.map((id) => ({ id, rotulo: ROTULO_ABA[id] })) })
 }
@@ -64,41 +65,100 @@ export async function convidarColaborador(c: Context<AppEnv>) {
   const coluna = conta.tipo === 'gov' ? 'gov_conta_id' : 'usuario_id'
   const { data: vinculo, error } = await supabase
     .from('vinculos')
-    .insert({ pagina_id: paginaId, [coluna]: conta.id, papel: 'colaborador', cargo, permissoes })
+    .insert({
+      pagina_id: paginaId,
+      [coluna]: conta.id,
+      papel: 'colaborador',
+      cargo,
+      permissoes,
+      // Só vira membro depois de aceitar (public.responder_convite_equipe)
+      status: 'pendente',
+      convidado_por: c.get('userId'),
+      convidado_em: new Date().toISOString(),
+      expira_em: new Date(Date.now() + DIAS_CONVITE * 86_400_000).toISOString(),
+    })
     .select('id')
     .single()
 
   if (error) {
-    if (error.code === '23505') return c.json({ error: 'Esta pessoa já faz parte da equipe' }, 409)
+    if (error.code === '23505') return c.json({ error: 'Esta pessoa já faz parte da equipe ou já tem um convite pendente' }, 409)
     return c.json({ error: error.message }, 400)
   }
 
+  await avisarConvidado(c, paginaId, vinculo.id, email, cargo, permissoes)
   const novo = await membro(c, paginaId, vinculo.id)
-  c.set('acaoLog', `Adicionou ${email} à equipe`)
-
-  // Aviso por e-mail (melhor esforço)
-  const { data: pagina } = await supabase.from('paginas').select('nome').eq('id', paginaId).maybeSingle()
-  if (pagina && c.env.RESEND_API_KEY) {
-    const nome = escaparHtml(pagina.nome)
-    const lista = permissoes.length
-      ? permissoes.map((aba) => escaparHtml(ROTULO_ABA[aba])).join(', ')
-      : 'nenhuma aba por enquanto (o responsável pela página vai liberar)'
-    await enviarEmail(
-      c.env.RESEND_API_KEY,
-      email,
-      `Você agora faz parte da equipe de ${pagina.nome}`,
-      montarAviso(
-        'Você entrou para uma equipe na Plura',
-        `<p>Você foi adicionado(a) à equipe da página <strong>${nome}</strong>${cargo ? ` como <strong>${escaparHtml(cargo)}</strong>` : ''}.</p>
-         <p>Abas que você pode editar: ${lista}.</p>
-         <p>Para editar, entre com o seu e-mail e senha da Plura.</p>`,
-        { texto: 'Abrir minhas páginas', link: c.env.FRONTEND_URL },
-      ),
-      c.env.EMAIL_REMETENTE,
-    )
-  }
-
+  c.set('acaoLog', `Convidou ${email} para a equipe`)
   return c.json(novo ?? { id: vinculo.id }, 201)
+}
+
+// Notificação no sino + e-mail para a pessoa aceitar ou recusar
+async function avisarConvidado(c: Context<AppEnv>, paginaId: string, vinculoId: string, email: string, cargo: string | null, permissoes: string[]) {
+  const supabase = c.get('supabase')
+  try {
+    await supabase.rpc('notificar_convite_equipe', { p_vinculo_id: vinculoId })
+  } catch (err) {
+    console.error('Falha ao notificar convite:', err)
+  }
+  const { data: pagina } = await supabase.from('paginas').select('nome').eq('id', paginaId).maybeSingle()
+  if (!pagina || !c.env.RESEND_API_KEY) return
+  const nome = escaparHtml(pagina.nome)
+  const lista = permissoes.length
+    ? permissoes.map((aba) => escaparHtml(ROTULO_ABA[aba as Aba] ?? aba)).join(', ')
+    : 'o responsável pela página vai liberar as abas depois'
+  await enviarEmail(
+    c.env.RESEND_API_KEY,
+    email,
+    `Convite para a equipe de ${pagina.nome}`,
+    montarAviso(
+      'Você recebeu um convite para uma equipe na Plura',
+      `<p>Você foi convidado(a) para a equipe da página <strong>${nome}</strong>${cargo ? `, como <strong>${escaparHtml(cargo)}</strong>` : ''}.</p>
+       <p>Abas que você poderá editar: ${lista}.</p>
+       <p>Para aceitar ou recusar, entre com o seu e-mail e senha da Plura e abra <strong>Minhas páginas</strong>. O convite vale por ${DIAS_CONVITE} dias.</p>`,
+      { texto: 'Ver convite', link: c.env.FRONTEND_URL },
+    ),
+    c.env.EMAIL_REMETENTE,
+  )
+}
+
+// Reenvia um convite pendente ou expirado (renova o prazo)
+export async function reenviarConvite(c: Context<AppEnv>) {
+  const supabase = c.get('supabase')
+  const paginaId = c.req.param('id') as string
+  const vinculoId = c.req.param('vinculoId') as string
+  const alvo = (await membro(c, paginaId, vinculoId)) as { status?: string; email?: string; nome?: string; cargo?: string | null; permissoes?: string[] } | null
+  if (!alvo) return c.json({ error: 'Convite não encontrado' }, 404)
+  if (alvo.status !== 'pendente') return c.json({ error: 'Esta pessoa já aceitou o convite' }, 400)
+
+  const { error } = await supabase
+    .from('vinculos')
+    .update({ convidado_em: new Date().toISOString(), expira_em: new Date(Date.now() + DIAS_CONVITE * 86_400_000).toISOString() })
+    .eq('id', vinculoId)
+    .eq('pagina_id', paginaId)
+  if (error) return c.json({ error: error.message }, 400)
+
+  if (alvo.email) await avisarConvidado(c, paginaId, vinculoId, alvo.email, alvo.cargo ?? null, alvo.permissoes ?? [])
+  c.set('acaoLog', `Reenviou o convite de ${alvo.email ?? alvo.nome ?? 'um membro'}`)
+  return c.json(await membro(c, paginaId, vinculoId))
+}
+
+// ---------- Convites recebidos (quem foi convidado) ----------
+
+export async function meusConvites(c: Context<AppEnv>) {
+  const { data, error } = await c.get('supabase').rpc('meus_convites_equipe')
+  if (error) return c.json({ error: error.message }, 500)
+  const daArea = ((data ?? []) as { pagina_tipo: string }[]).filter((cv) => cv.pagina_tipo === AREA_CONFIG.tipoPagina)
+  return c.json({ convites: daArea })
+}
+
+export async function responderConvite(c: Context<AppEnv>) {
+  const vinculoId = c.req.param('id') as string
+  const aceitar = c.req.path.endsWith('/aceitar')
+  const { data, error } = await c
+    .get('supabase')
+    .rpc('responder_convite_equipe', { p_vinculo_id: vinculoId, p_aceitar: aceitar })
+    .maybeSingle<{ pagina_id: string; pagina_nome: string; pagina_tipo: string }>()
+  if (error) return c.json({ error: error.message }, 400)
+  return c.json({ aceito: aceitar, ...data })
 }
 
 export async function atualizarColaborador(c: Context<AppEnv>) {
@@ -138,14 +198,14 @@ export async function removerColaborador(c: Context<AppEnv>) {
   const paginaId = c.req.param('id') as string
   const vinculoId = c.req.param('vinculoId') as string
 
-  const alvo = (await membro(c, paginaId, vinculoId)) as { nome?: string; papel?: string } | null
+  const alvo = (await membro(c, paginaId, vinculoId)) as { nome?: string; papel?: string; status?: string; email?: string } | null
   if (!alvo) return c.json({ error: 'Membro da equipe não encontrado' }, 404)
   if (alvo.papel === 'administrador') return c.json({ error: 'O administrador da página não pode ser removido' }, 400)
 
   const { error } = await supabase.from('vinculos').delete().eq('id', vinculoId).eq('pagina_id', paginaId)
   if (error) return c.json({ error: error.message }, 400)
 
-  c.set('acaoLog', `Removeu ${alvo.nome ?? 'um membro'} da equipe`)
+  c.set('acaoLog', alvo.status === 'pendente' ? `Cancelou o convite de ${alvo.email ?? alvo.nome ?? 'um membro'}` : `Removeu ${alvo.nome ?? 'um membro'} da equipe`)
   return c.body(null, 204)
 }
 

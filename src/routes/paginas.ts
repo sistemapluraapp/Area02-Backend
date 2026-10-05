@@ -26,7 +26,7 @@ export async function criarPagina(c: Context<AppEnv>) {
   const body = await c.req.json<PaginaBody>().catch(() => null)
   if (!body) return c.json({ error: 'Corpo da requisição inválido' }, 400)
   if (TIPO_AREA === 'publica') {
-    const { data: areas } = await supabase.rpc('minhas_areas').maybeSingle<{ eh_gov: boolean }>()
+    const { data: areas } = await supabase.rpc('minhas_areas_convites').maybeSingle<{ eh_gov: boolean }>()
     if (!areas?.eh_gov) return c.json({ error: 'Só contas institucionais Gov criam páginas na Plura Gov', codigo: 'nao_gov' }, 403)
   }
   if (body.aceite_termos !== true) return c.json({ error: 'É preciso aceitar os termos e condições para criar a página' }, 400)
@@ -77,8 +77,10 @@ export async function minhasPaginas(c: Context<AppEnv>) {
     supabase
       .from('vinculos')
       .select(`papel, cargo, permissoes, paginas(${PAGINA_COLUNAS})`)
-      .or(`usuario_id.eq.${userId},gov_conta_id.eq.${userId}`),
-    supabase.rpc('minhas_areas').maybeSingle<{ b2b: number; gov: number; eh_gov: boolean }>(),
+      .or(`usuario_id.eq.${userId},gov_conta_id.eq.${userId}`)
+      // Convites pendentes aparecem à parte (GET /convites-equipe)
+      .eq('status', 'ativo'),
+    supabase.rpc('minhas_areas_convites').maybeSingle<{ b2b: number; gov: number; eh_gov: boolean; convites_b2b: number; convites_gov: number }>(),
   ])
 
   if (error) return c.json({ error: error.message }, 500)
@@ -90,6 +92,7 @@ export async function minhasPaginas(c: Context<AppEnv>) {
       nome: AREA_CONFIG.outraArea.nome,
       url: AREA_CONFIG.outraArea.url,
       total: TIPO_AREA === 'privada' ? (areas?.gov ?? 0) : (areas?.b2b ?? 0),
+      convites: TIPO_AREA === 'privada' ? (areas?.convites_gov ?? 0) : (areas?.convites_b2b ?? 0),
     },
     pode_criar: TIPO_AREA === 'privada' ? !areas?.eh_gov : !!areas?.eh_gov,
   })
@@ -104,7 +107,7 @@ export async function obterPagina(c: Context<AppEnv>) {
 
   const [{ data: vinculos }, { data: avaliacoes }, { data: certificados }, { data: midias }, { data: experiencias }] = await Promise.all([
     pode(c.get('acesso'), 'equipe')
-      ? supabase.rpc('equipe_pagina', { p_pagina_id: id })
+      ? supabase.rpc('equipe_da_pagina', { p_pagina_id: id })
       : Promise.resolve({ data: [] }),
     supabase
       .from('avaliacoes')

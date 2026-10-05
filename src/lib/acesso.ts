@@ -88,6 +88,7 @@ export async function carregarAcesso(c: Context<AppEnv>, paginaId: string): Prom
       .from('vinculos')
       .select('id, papel, permissoes, cargo')
       .eq('pagina_id', paginaId)
+      .eq('status', 'ativo')
       .or(`usuario_id.eq.${userId},gov_conta_id.eq.${userId}`)
       .maybeSingle(),
   ])
