@@ -154,6 +154,9 @@ function exigencia(metodo: string, resto: string[]): Exigencia {
     case 'colaboradores':
     case 'logs':
       return { aba: 'equipe', acao: escrita ? 'Alterou a equipe' : undefined }
+    case 'inscricoes':
+      // As funções do banco registram no log o início, o envio e o cancelamento
+      return escrita ? { aba: 'selos' } : { aba: 'qualquer' }
     case 'certificados':
       return escrita ? { aba: 'selos', acao: 'Solicitou uma certificação' } : { aba: 'qualquer' }
     default:

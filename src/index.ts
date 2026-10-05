@@ -1,3 +1,4 @@
+import { acaoInscricao, inscreverPagina, listarCertificacoesPublicadas, listarInscricoes, obterCertificacaoPublicada, obterInscricao, salvarResposta } from './routes/certificacoes'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { requireAuth } from './middleware/auth'
@@ -95,6 +96,14 @@ app.delete('/paginas/:id/colaboradores/:vinculoId', removerColaborador)
 app.patch('/avaliacoes/:id/resposta', responderAvaliacao)
 
 app.post('/paginas/:id/certificados', solicitarCertificado)
+app.get('/certificacoes', listarCertificacoesPublicadas)
+app.get('/certificacoes/:id', obterCertificacaoPublicada)
+app.get('/paginas/:id/inscricoes', listarInscricoes)
+app.post('/paginas/:id/inscricoes', inscreverPagina)
+app.get('/paginas/:id/inscricoes/:inscricaoId', obterInscricao)
+app.put('/paginas/:id/inscricoes/:inscricaoId/respostas/:requisitoId', salvarResposta)
+app.post('/paginas/:id/inscricoes/:inscricaoId/enviar', acaoInscricao)
+app.post('/paginas/:id/inscricoes/:inscricaoId/cancelar', acaoInscricao)
 app.get('/paginas/:id/certificados', listarCertificados)
 
 app.get('/notificacoes', listarNotificacoes)
