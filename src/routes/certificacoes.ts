@@ -65,7 +65,7 @@ export async function listarInscricoes(c: Context<AppEnv>) {
   const { data, error } = await c
     .get('supabase')
     .from('certificacao_inscricoes')
-    .select('id, status, created_at, enviada_em, decidida_em, concedida_em, expira_em, observacao_adm, certificacao:certificacoes(id, titulo, resumo, icone, imagem_url, validade_meses)')
+    .select('id, status, created_at, enviada_em, decidida_em, concedida_em, expira_em, observacao_adm, codigo, certificacao:certificacoes(id, titulo, resumo, icone, imagem_url, validade_meses)')
     .eq('pagina_id', c.req.param('id') as string)
     .order('created_at', { ascending: false })
   if (error) return c.json({ error: error.message }, 500)
@@ -89,7 +89,7 @@ export async function obterInscricao(c: Context<AppEnv>) {
   const inscricaoId = c.req.param('inscricaoId') as string
   const { data: insc } = await supabase
     .from('certificacao_inscricoes')
-    .select('id, certificacao_id, pagina_id, status, created_at, enviada_em, decidida_em, concedida_em, expira_em, observacao_adm')
+    .select('id, certificacao_id, pagina_id, status, created_at, enviada_em, decidida_em, concedida_em, expira_em, observacao_adm, codigo')
     .eq('id', inscricaoId)
     .eq('pagina_id', c.req.param('id') as string)
     .maybeSingle()
