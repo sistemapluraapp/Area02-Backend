@@ -125,3 +125,102 @@ export async function acaoInscricao(c: Context<AppEnv>) {
   if (error) return erroRpc(c, error)
   return c.json(data)
 }
+
+// ---- Etapa 8c: arquivos no R2 (bucket CERTIFICACOES) ----
+
+const MAX_BYTES = 25 * 1024 * 1024
+// Tipos aceitos: documentos, planilhas, imagens e vídeos curtos
+const TIPOS_ACEITOS: Record<string, string> = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic',
+  doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  odt: 'application/vnd.oasis.opendocument.text', ods: 'application/vnd.oasis.opendocument.spreadsheet',
+  txt: 'text/plain', csv: 'text/csv', mp4: 'video/mp4', mov: 'video/quicktime',
+}
+
+function nomeSeguro(nome: string) {
+  const limpo = nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.\- ]+/g, '').replace(/\s+/g, '-').slice(-120)
+  return limpo || 'arquivo'
+}
+
+// POST /paginas/:id/inscricoes/:inscricaoId/respostas/:requisitoId/arquivos (multipart, campo "arquivo")
+export async function enviarArquivo(c: Context<AppEnv>) {
+  const inscricaoId = c.req.param('inscricaoId') as string
+  const requisitoId = c.req.param('requisitoId') as string
+  const corpo = await c.req.parseBody().catch(() => null)
+  const arquivo = corpo?.arquivo
+  if (!(arquivo instanceof File)) return c.json({ error: 'Envie um arquivo' }, 400)
+  if (arquivo.size <= 0) return c.json({ error: 'O arquivo está vazio' }, 400)
+  if (arquivo.size > MAX_BYTES) return c.json({ error: 'O arquivo passa de 25 MB' }, 413)
+  const extensao = (arquivo.name.split('.').pop() ?? '').toLowerCase()
+  const tipo = TIPOS_ACEITOS[extensao]
+  if (!tipo) return c.json({ error: 'Formato não aceito. Use PDF, imagem, documento, planilha ou vídeo MP4/MOV.' }, 400)
+
+  // Confere antes de gravar (a função do banco confere de novo ao registrar)
+  const { data: insc } = await c.get('supabase').from('certificacao_inscricoes').select('id, status').eq('id', inscricaoId).eq('pagina_id', c.req.param('id') as string).maybeSingle()
+  if (!insc) return c.json({ error: 'Inscrição não encontrada' }, 404)
+  if (insc.status !== 'em_andamento') return c.json({ error: 'Esta inscrição não pode ser alterada agora' }, 400)
+
+  const chave = `inscricoes/${inscricaoId}/${requisitoId}/${crypto.randomUUID()}-${nomeSeguro(arquivo.name)}`
+  await c.env.CERTIFICACOES.put(chave, arquivo.stream(), {
+    httpMetadata: { contentType: tipo },
+    customMetadata: { nome: encodeURIComponent(arquivo.name.slice(0, 200)), enviado_por: c.get('userId') ?? '' },
+  })
+  const { data, error } = await c.get('supabase').rpc('adicionar_arquivo_certificacao', {
+    p_inscricao_id: inscricaoId,
+    p_requisito_id: requisitoId,
+    p_item: { chave, nome: arquivo.name.slice(0, 200), tamanho: arquivo.size, tipo },
+  })
+  if (error) {
+    await c.env.CERTIFICACOES.delete(chave).catch(() => {})
+    return erroRpc(c, error)
+  }
+  c.set('acaoLog', `Enviou um arquivo para a certificação (${arquivo.name.slice(0, 80)})`)
+  return c.json(data, 201)
+}
+
+// DELETE /paginas/:id/inscricoes/:inscricaoId/respostas/:requisitoId/arquivos?chave=...
+export async function removerArquivo(c: Context<AppEnv>) {
+  const chave = c.req.query('chave') ?? ''
+  const { data, error } = await c.get('supabase').rpc('remover_arquivo_certificacao', {
+    p_inscricao_id: c.req.param('inscricaoId') as string,
+    p_requisito_id: c.req.param('requisitoId') as string,
+    p_chave: chave,
+  })
+  if (error) return erroRpc(c, error)
+  if (!data) return c.json({ error: 'Arquivo não encontrado' }, 404)
+  await c.env.CERTIFICACOES.delete(chave).catch(() => {})
+  c.set('acaoLog', 'Removeu um arquivo da certificação')
+  return c.json({ ok: true })
+}
+
+// GET /paginas/:id/inscricoes/:inscricaoId/respostas/:requisitoId/arquivos?chave=...
+// Só baixa arquivos que a equipe da página enxerga (RLS) e que estão na resposta.
+export async function baixarArquivo(c: Context<AppEnv>) {
+  const inscricaoId = c.req.param('inscricaoId') as string
+  const requisitoId = c.req.param('requisitoId') as string
+  const chave = c.req.query('chave') ?? ''
+  const { data: resp } = await c
+    .get('supabase')
+    .from('certificacao_respostas')
+    .select('valor, inscricao:certificacao_inscricoes!inner(pagina_id)')
+    .eq('inscricao_id', inscricaoId)
+    .eq('requisito_id', requisitoId)
+    .eq('inscricao.pagina_id', c.req.param('id') as string)
+    .maybeSingle()
+  const itens = ((resp?.valor as { itens?: { chave: string; nome: string }[] } | undefined)?.itens ?? [])
+  const item = itens.find((i) => i.chave === chave)
+  if (!item) return c.json({ error: 'Arquivo não encontrado' }, 404)
+  const objeto = await c.env.CERTIFICACOES.get(chave)
+  if (!objeto) return c.json({ error: 'Arquivo não encontrado no armazenamento' }, 404)
+  return new Response(objeto.body, {
+    headers: {
+      'Content-Type': objeto.httpMetadata?.contentType ?? 'application/octet-stream',
+      'Content-Length': String(objeto.size),
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(item.nome)}`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  })
+}

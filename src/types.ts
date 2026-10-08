@@ -9,6 +9,8 @@ export type Bindings = {
   RESEND_API_KEY: string
   // Remetente dos e-mails (ex.: "Plura <nao-responda@plura.app.br>")
   EMAIL_REMETENTE?: string
+  // Bucket R2 dos arquivos das inscrições em certificações (8c)
+  CERTIFICACOES: R2Bucket
 }
 
 export type Variables = {

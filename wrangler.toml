@@ -13,6 +13,12 @@ AREA = "02"
 EMAIL_REMETENTE = "Plura <nao-responda@plura.app.br>"
 FRONTEND_URL = "https://login.plura.app.br"
 
+
+# Arquivos das inscrições em certificações (8c), até 25 MB cada
+[[r2_buckets]]
+binding = "CERTIFICACOES"
+bucket_name = "plura-certificacoes"
+
 # Ambiente de teste (branches claude/clever-knuth-bx0368 e claude/stoic-babbage-0gea8e): Worker separado,
 # area02-backend-teste. Publicado por .github/workflows/deploy-teste.yml
 [env.teste]
@@ -24,3 +30,7 @@ SUPABASE_ANON_KEY = "sb_publishable_LHnLAUk6M4ek94aokap89g__nL-ySby"
 AREA = "02"
 EMAIL_REMETENTE = "Plura <nao-responda@plura.app.br>"
 FRONTEND_URL = "https://teste.area02-frontend.pages.dev"
+
+[[env.teste.r2_buckets]]
+binding = "CERTIFICACOES"
+bucket_name = "plura-certificacoes-teste"
